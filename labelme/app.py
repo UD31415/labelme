@@ -201,10 +201,10 @@ class MainWindow(QtWidgets.QMainWindow):
             if self._config[dock]["show"] is False:
                 getattr(self, dock).setVisible(False)
 
-        self.addDockWidget(Qt.RightDockWidgetArea, self.flag_dock)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.label_dock)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.shape_dock)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.file_dock)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.flag_dock)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.label_dock)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.shape_dock)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.file_dock)
 
         # Actions
         action = functools.partial(utils.newAction, self)

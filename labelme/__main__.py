@@ -168,7 +168,7 @@ def main():
     app.installTranslator(translator)
 
     # Load the stylesheet
-    with open('dark_theme.qss', 'r') as f:
+    with open('labelme\dark_theme.qss', 'r') as f:
         app.setStyleSheet(f.read())
 
 
