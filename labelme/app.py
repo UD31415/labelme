@@ -35,6 +35,8 @@ from labelme.widgets import UniqueLabelQListWidget
 from labelme.widgets import ZoomWidget
 
 from . import utils
+from labelme.utils.extract_images_from_ros1bag import read_bin_file
+from labelme.utils.image import img_arr_to_data
 
 # FIXME
 # - [medium] Set max zoom value to something big enough for FitWidth/Window
@@ -1602,6 +1604,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # assumes same name, but json extension
         self.status(str(self.tr("Loading %s...")) % osp.basename(str(filename)))
         label_file = osp.splitext(filename)[0] + ".json"
+        bag_file   = osp.splitext(filename)[0] + ".bin"
+        
         if self.output_dir:
             label_file_without_path = osp.basename(label_file)
             label_file = osp.join(self.output_dir, label_file_without_path)
@@ -1625,12 +1629,36 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.labelFile.imagePath,
             )
             self.otherData = self.labelFile.otherData
+            image = QtGui.QImage.fromData(self.imageData)
+
+        elif QtCore.QFile.exists(bag_file): 
+            #def get_image(self, fname):
+            "get an infrared image frame from bin file"
+        
+            fsize               = (1280,720)
+            fbpp                = 8
+            img_array           = read_bin_file(filename,fsize,fbpp)
+            if img_array is not None:
+                self.imagePath = filename
+            self.labelFile = None
+            self.imageData = None # brightness control wants a byte array
+            # create QT from numpy - Create a QImage object
+            image = QtGui.QImage(img_array, img_array.shape[1], img_array.shape[0], QtGui.QImage.Format_Grayscale8)
+
+            # Get the image bytes brightness control wants a byte array
+            #self.imageData  = image.bytesPerLine()
+            #self.imageData  = image.bits().asstring(image.bytesPerLine() * image.height())
+
+            self.imageData  = img_arr_to_data(img_array)
+
+
         else:
             self.imageData = LabelFile.load_image_file(filename)
             if self.imageData:
                 self.imagePath = filename
             self.labelFile = None
-        image = QtGui.QImage.fromData(self.imageData)
+
+            image = QtGui.QImage.fromData(self.imageData)
 
         if image.isNull():
             formats = [
@@ -2160,7 +2188,7 @@ class MainWindow(QtWidgets.QMainWindow):
             ".%s" % fmt.data().decode().lower()
             for fmt in QtGui.QImageReader.supportedImageFormats()
         ]
-
+        extensions.append(".bin") #UD
         images = []
         for root, dirs, files in os.walk(folderPath):
             for file in files:
