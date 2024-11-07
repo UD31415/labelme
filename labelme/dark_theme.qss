@@ -1,0 +1,16 @@
+QWidget {
+    color: white;
+    background-color: #222222;
+}
+
+QLineEdit, QTextEdit {
+    background-color: #333333;
+    color: white;
+}
+
+QButton {
+    background-color: #444444;
+    color: white;
+    border: 1px solid #555555;
+    border-radius: 5px;
+}

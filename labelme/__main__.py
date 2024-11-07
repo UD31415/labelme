@@ -161,10 +161,17 @@ def main():
         QtCore.QLocale.system().name(),
         osp.dirname(osp.abspath(__file__)) + "/translate",
     )
+
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName(__appname__)
     app.setWindowIcon(newIcon("icon"))
     app.installTranslator(translator)
+
+    # Load the stylesheet
+    with open('dark_theme.qss', 'r') as f:
+        app.setStyleSheet(f.read())
+
+
     win = MainWindow(
         config=config,
         filename=filename,
