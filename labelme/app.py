@@ -172,7 +172,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.canvas.zoomRequest.connect(self.zoomRequest)
         self.canvas.mouseMoved.connect(
-            lambda pos: self.status(f"Mouse is at: x={pos.x()}, y={pos.y()}")
+            lambda pos: self.status(f"Mouse is at: x={pos.x():4.1f}, y={pos.y():4.1f}")
         )
 
         scrollArea = QtWidgets.QScrollArea()
