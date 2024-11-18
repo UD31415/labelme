@@ -1634,10 +1634,16 @@ class MainWindow(QtWidgets.QMainWindow):
         elif QtCore.QFile.exists(bag_file): 
             #def get_image(self, fname):
             "get an infrared image frame from bin file"
-        
-            fsize               = (1280,720)
-            fbpp                = 8
-            img_array           = read_bin_file(filename,fsize,fbpp)
+
+            try: # infrared L&R
+                fsize               = (1280,720)
+                fbpp                = 8                
+                img_array           = read_bin_file(filename,fsize,fbpp)
+            except: # depth
+                fsize               = (640,360)
+                fbpp                = 16                
+                img_array           = read_bin_file(filename,fsize,fbpp)
+
             if img_array is not None:
                 self.imagePath = filename
             self.labelFile = None
