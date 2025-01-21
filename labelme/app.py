@@ -38,6 +38,8 @@ from . import utils
 from labelme.utils.extract_images_from_ros1bag import read_bin_file
 from labelme.utils.image import img_arr_to_data
 
+from labelme.tracking import point_tracker 
+
 # FIXME
 # - [medium] Set max zoom value to something big enough for FitWidth/Window
 
@@ -1273,6 +1275,20 @@ class MainWindow(QtWidgets.QMainWindow):
         shape.select_line_color = QtGui.QColor(255, 255, 255)
         shape.select_fill_color = QtGui.QColor(r, g, b, 155)
 
+    def convertQImageToMat(self, incomingImage):
+        '''  Converts a QImage into an opencv MAT format
+        from https://stackoverflow.com/questions/18406149/pyqt-pyside-how-do-i-convert-qimage-into-opencvs-mat-format'''
+
+        incomingImage = incomingImage.convertToFormat(4)
+
+        width = incomingImage.width()
+        height = incomingImage.height()
+
+        ptr = incomingImage.bits()
+        ptr.setsize(incomingImage.byteCount())
+        arr = np.array(ptr).reshape(height, width, 4)  #  Copies the data
+        return arr        
+
     def _get_rgb_by_label(self, label):
         if self._config["shape_color"] == "auto":
             item = self.uniqLabelList.findItemByLabel(label)
@@ -1843,7 +1859,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._config["keep_prev"] = keep_prev
 
-    def openNextImg(self, _value=False, load=True):
+    def openNextImgOld(self, _value=False, load=True):
         keep_prev = self._config["keep_prev"]
         if QtWidgets.QApplication.keyboardModifiers() == (
             Qt.ControlModifier | Qt.ShiftModifier
@@ -1871,6 +1887,105 @@ class MainWindow(QtWidgets.QMainWindow):
             self.loadFile(self.filename)
 
         self._config["keep_prev"] = keep_prev
+
+    def track(self, shapes, prev_frame):
+        #if there is an exisitng json file, maybe pull up a warning?
+        if prev_frame is None or len(shapes) < 1:
+            return
+        old_frame = self.convertQImageToMat(prev_frame)
+        frame = self.convertQImageToMat(self.image)
+        new_shapes = []
+        for shape in shapes:
+            #if shape.projected:
+            #    continue 
+            if shape.shape_type == 'polygon' or shape.shape_type == 'point':
+                #all_ok = True
+                for k in range(len(shape.points)):
+                    x,y     = shape.points[k].x(), shape.points[k].y()
+                    pix_num = 64
+                    #get new positions
+                    tracker = point_tracker.MOSSE(old_frame, (x, y, pix_num, pix_num))
+                    temp_x, temp_y, temp_psr = tracker.update(frame)
+                    # print(temp_psr)
+                    if temp_psr >1.0:
+                        #shape.popPoint()
+                        #shape.addPoint(QtCore.QPointF(temp_x, temp_y))
+                        shape[k].setX(temp_x)
+                        shape[k].setY(temp_y)
+                    else:
+                        #all_ok = False
+                        self.tr('Can not track the full shape')
+
+                #if all_ok:
+                new_shapes.append(shape)
+                tracker = None
+
+            elif shape.shape_type == 'point_old':
+                x,y     = shape.points[0].x(), shape.points[0].y()
+                pix_num = 64
+                #get new positions
+                tracker = point_tracker.MOSSE(old_frame, (x, y, pix_num, pix_num))
+                temp_x, temp_y, temp_psr = tracker.update(frame)
+                # print(temp_psr)
+                if temp_psr >1.0:
+                    shape.popPoint()
+                    shape.addPoint(QtCore.QPointF(temp_x, temp_y))
+                    new_shapes.append(shape)
+                else:
+                    tracker = None
+
+        if new_shapes:
+            self.loadShapes(new_shapes, replace = True)
+            self.setDirty()        
+
+    def openNextImg(self, _value=False, load=True, tracking = False):
+        keep_prev = self._config.get("keep_prev")
+        prev_shapes = self.canvas.shapes
+        prev_frame = self.image
+        # keep prev acts like tracking - can be disabled by a GUI
+        tracking   = self._config.get("tracking") 
+
+        if Qt.KeyboardModifiers() == (Qt.ControlModifier & Qt.ShiftModifier):
+            self._config["keep_prev"] = True
+
+        if not self.mayContinue():
+            return
+
+        if len(self.imageList) <= 0:
+            return
+
+        filename = None
+        if self.filename is None:
+            filename = self.imageList[0]
+        else:
+            currIndex = self.imageList.index(self.filename)
+            if currIndex + 1 < len(self.imageList):
+                filename = self.imageList[currIndex + 1]
+            else:
+                filename = self.imageList[-1]
+        self.filename = filename
+        self.settings.setValue(
+            "filename", self.filename)
+
+        if self.filename and load:
+            self.loadFile(self.filename)
+
+        if tracking and not self.labelFile:
+            self.track(prev_shapes, prev_frame)
+            # UD
+            self.setEditMode()
+
+        elif tracking and self.labelFile:
+            mb = QtWidgets.QMessageBox
+            msg = self.tr(
+                "Next file already has labels. Do you want to remove old labels and add new labels?"
+            )
+            answer = mb.warning(self, self.tr("Attention"), msg, mb.Yes | mb.No)
+            if answer == mb.Yes:
+                self.labelList.clear()
+                self.track(prev_shapes, prev_frame)
+
+        self._config["keep_prev"] = keep_prev        
 
     def openFile(self, _value=False):
         if not self.mayContinue():
