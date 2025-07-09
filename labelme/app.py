@@ -1835,7 +1835,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.mayContinue():
             self.loadFile(filename)
 
-    def openPrevImg(self, _value=False):
+    def openPrevImgOld(self, _value=False):
         keep_prev = self._config["keep_prev"]
         if QtWidgets.QApplication.keyboardModifiers() == (
             Qt.ControlModifier | Qt.ShiftModifier
@@ -1985,7 +1985,51 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.labelList.clear()
                 self.track(prev_shapes, prev_frame)
 
-        self._config["keep_prev"] = keep_prev        
+        self._config["keep_prev"] = keep_prev   
+
+    def openPrevImg(self, _value=False):
+
+        prev_frame = self.image
+        prev_shapes = self.canvas.shapes
+        # keep prev acts like tracking - can be disabled by a GUI
+        tracking   = self._config.get("tracking")         
+        keep_prev = self._config["keep_prev"]
+        if QtWidgets.QApplication.keyboardModifiers() == (
+            Qt.ControlModifier | Qt.ShiftModifier
+        ):
+            self._config["keep_prev"] = True
+
+        if not self.mayContinue():
+            return
+
+        if len(self.imageList) <= 0:
+            return
+
+        if self.filename is None:
+            return
+
+        currIndex = self.imageList.index(self.filename)
+        if currIndex - 1 >= 0:
+            filename = self.imageList[currIndex - 1]
+            if filename:
+                self.loadFile(filename)
+
+        if tracking and not self.labelFile:
+            self.track(prev_shapes, prev_frame)
+            # UD
+            self.setEditMode()
+
+        elif tracking and self.labelFile:
+            mb = QtWidgets.QMessageBox
+            msg = self.tr(
+                "Next file already has labels. Do you want to remove old labels and add new labels?"
+            )
+            answer = mb.warning(self, self.tr("Attention"), msg, mb.Yes | mb.No)
+            if answer == mb.Yes:
+                self.labelList.clear()
+                self.track(prev_shapes, prev_frame)                
+
+        self._config["keep_prev"] = keep_prev             
 
     def openFile(self, _value=False):
         if not self.mayContinue():
